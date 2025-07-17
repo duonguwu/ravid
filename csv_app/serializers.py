@@ -87,3 +87,32 @@ class LoginSerializer(serializers.Serializer):
                 code='authorization'
             )
 
+
+class CSVFileUploadSerializer(serializers.ModelSerializer):
+    file = serializers.FileField()
+
+    class Meta:
+        model = CSVFile
+        fields = ('file',)
+
+    def validate_file(self, value):
+        if not value.name.endswith('.csv'):
+            raise serializers.ValidationError(
+                "Invalid file format. Only CSV files are allowed."
+            )
+
+        return value
+
+    def create(self, validated_data):
+        file = validated_data['file']
+        user = self.context['request'].user
+
+        csv_file = CSVFile.objects.create(
+            user=user,
+            original_name=file.name,
+            file_path=file,
+            file_size=file.size
+        )
+        return csv_file
+
+

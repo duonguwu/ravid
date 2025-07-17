@@ -2,10 +2,16 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import CreateAPIView
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .serializers import UserRegistrationSerializer, LoginSerializer
+from .serializers import (
+    UserRegistrationSerializer,
+    LoginSerializer,
+    CSVFileUploadSerializer
+)
 
 
 class RegisterView(APIView):
@@ -175,4 +181,107 @@ class LoginView(APIView):
         return Response({
             'error': error_msg
         }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class CSVUploadView(CreateAPIView):
+    serializer_class = CSVFileUploadSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @swagger_auto_schema(
+        operation_description="Upload a CSV file for processing",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Bearer <JWT_ACCESS_TOKEN>",
+                type=openapi.TYPE_STRING,
+                required=True,
+                example="Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+            )
+        ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['file'],
+            properties={
+                'file': openapi.Schema(
+                    type=openapi.TYPE_FILE,
+                    description='CSV file to upload',
+                    example='sample.csv'
+                )
+            }
+        ),
+        responses={
+            201: openapi.Response(
+                description="File uploaded successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example='File uploaded successfully'
+                        ),
+                        'file_id': openapi.Schema(
+                            type=openapi.TYPE_INTEGER,
+                            example=1,
+                            description='ID of uploaded file'
+                        )
+                    }
+                )
+            ),
+            400: openapi.Response(
+                description="Upload failed",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'error': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example='Invalid file format. Only CSV files are allowed.'
+                        )
+                    }
+                )
+            ),
+            401: openapi.Response(
+                description="Authentication required",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'detail': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example='Authentication credentials were not provided.'
+                        )
+                    }
+                )
+            )
+        },
+        consumes=['multipart/form-data']
+    )
+    def post(self, request, *args, **kwargs):
+        if 'file' not in request.data:
+            return Response({
+                'error': 'No file provided'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Use serializer to validate and create
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            csv_file = serializer.save()
+
+            return Response({
+                'message': 'File uploaded successfully',
+                'file_id': csv_file.id
+            }, status=status.HTTP_201_CREATED)
+
+        # Handle validation errors
+        errors = serializer.errors
+        if 'file' in errors:
+            error_msg = errors['file'][0]
+        else:
+            error_msg = 'File upload failed'
+
+        return Response({
+            'error': error_msg
+        }, status=status.HTTP_400_BAD_REQUEST)
+
 
