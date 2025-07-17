@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+README.md
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.env
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Documentation
+docs/
+*.md
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Development files - exclude specific txt files but keep requirements.txt
+*.csv
+test_*.txt
+sample*.txt
+large*.txt
+test_* 

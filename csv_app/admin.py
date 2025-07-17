@@ -33,12 +33,29 @@ class CSVFileAdmin(admin.ModelAdmin):
                    'upload_date', 'is_processed')
     list_filter = ('upload_date', 'is_processed')
     search_fields = ('original_name', 'user__email')
-    readonly_fields = ('upload_date', 'file_size')
+    readonly_fields = ('upload_date', 'file_size', 'file_size_mb')
+
+    # Exclude file_size from form since it's auto-calculated
+    exclude = ()
 
     def file_size_mb(self, obj):
         """Display file size in MB"""
-        return f"{obj.file_size / (1024*1024):.2f} MB"
+        if obj.file_size:
+            return f"{obj.file_size / (1024*1024):.2f} MB"
+        return "Unknown"
     file_size_mb.short_description = 'File Size'
+
+    def save_model(self, request, obj, form, change):
+        """Override save to auto-calculate file_size"""
+        if obj.file_path and hasattr(obj.file_path, 'size'):
+            obj.file_size = obj.file_path.size
+        else:
+            obj.file_size = 0  # Default value if no file
+
+        if not obj.original_name and obj.file_path:
+            obj.original_name = obj.file_path.name
+
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(TaskResult)

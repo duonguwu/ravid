@@ -10,11 +10,6 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('Email is required')
 
-        # Validate email format
-        email_regex = r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$'
-        if not re.match(email_regex, email):
-            raise ValueError('Invalid email format')
-
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)

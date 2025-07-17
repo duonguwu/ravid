@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: ravid_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ravid_db
+      MYSQL_USER: ravid_user
+      MYSQL_PASSWORD: ravid_password
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "3306:3306"
+    networks:
+      - ravid_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis (Message Broker)
+  redis:
+    image: redis:7-alpine
+    container_name: ravid_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ravid_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Web Application
+  web:
+    build: .
+    container_name: ravid_web
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=ravid_db
+      - DB_USER=ravid_user
+      - DB_PASSWORD=ravid_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DJANGO_SUPERUSER_EMAIL=admin@ravid.cloud
+      - DJANGO_SUPERUSER_PASSWORD=admin123
+    volumes:
+      - media_files:/app/media
+      - static_files:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ravid_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/register/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker
+  celery:
+    build: .
+    container_name: ravid_celery
+    restart: unless-stopped
+    command: celery -A ravid_project worker --loglevel=info --concurrency=2
+    environment:
+      - DEBUG=True
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=ravid_db
+      - DB_USER=ravid_user
+      - DB_PASSWORD=ravid_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - media_files:/app/media
+    depends_on:
+      - db
+      - redis
+      - web
+    networks:
+      - ravid_network
+    healthcheck:
+      test: ["CMD", "celery", "-A", "ravid_project", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Beat (Optional - for scheduled tasks)
+  celery-beat:
+    build: .
+    container_name: ravid_celery_beat
+    restart: unless-stopped
+    command: celery -A ravid_project beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - DEBUG=True
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=ravid_db
+      - DB_USER=ravid_user
+      - DB_PASSWORD=ravid_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - media_files:/app/media
+    depends_on:
+      - db
+      - redis
+      - web
+    networks:
+      - ravid_network
+
+# Named Volumes
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  media_files:
+    driver: local
+  static_files:
+    driver: local
+
+# Networks
+networks:
+  ravid_network:
+    driver: bridge 
