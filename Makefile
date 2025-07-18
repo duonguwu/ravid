@@ -14,7 +14,6 @@ help:
 	@echo "  make status   - Show status of all containers"
 	@echo "  make shell    - Access Django shell"
 	@echo "  make clean    - Remove containers and volumes"
-	@echo "  make test     - Run tests"
 	@echo "  make backup   - Backup database"
 	@echo "  make restore  - Restore database"
 	@echo ""

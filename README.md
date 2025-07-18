@@ -30,6 +30,14 @@ A comprehensive API system for CSV file upload, processing, and management with:
                       └─────────────┘
 ```
 
+### Limitations:
+- File size is not restricted—very large CSVs may affect performance.
+- Processed files are not automatically deleted; disk usage may grow over time.
+- The system assumes all CSVs are UTF-8 and well-formed; unusual encodings may cause errors.
+- No quota or cleanup policy is currently implemented.
+
+
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -81,43 +89,6 @@ make health
 - `POST /api/upload-csv/` - Upload CSV file
 - `POST /api/perform-operation/` - Start CSV processing task
 - `GET /api/task-status/` - Check task status and get results
-
-## 🧪 Testing the API
-
-### 1. Register a User
-```bash
-curl -X POST http://localhost:8000/api/register/ \
-     -H 'Content-Type: application/json' \
-     -d '{"email":"test@example.com","password":"testpass123"}'
-```
-
-### 2. Login to Get JWT Token
-```bash
-curl -X POST http://localhost:8000/api/login/ \
-     -H 'Content-Type: application/json' \
-     -d '{"email":"test@example.com","password":"testpass123"}'
-```
-
-### 3. Upload CSV File
-```bash
-curl -X POST http://localhost:8000/api/upload-csv/ \
-     -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
-     -F 'file=@sample.csv'
-```
-
-### 4. Process CSV (Deduplication)
-```bash
-curl -X POST http://localhost:8000/api/perform-operation/ \
-     -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
-     -H 'Content-Type: application/json' \
-     -d '{"file_id":1,"operation":"dedup"}'
-```
-
-### 5. Check Task Status
-```bash
-curl -X GET "http://localhost:8000/api/task-status/?task_id=TASK_ID&n=50" \
-     -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
-```
 
 ## 🐳 Docker Commands
 
@@ -180,31 +151,6 @@ DEBUG=True
 DJANGO_SUPERUSER_EMAIL=admin@ravid.cloud
 DJANGO_SUPERUSER_PASSWORD=admin123
 ```
-
-### Available CSV Operations
-
-1. **Deduplication (`dedup`)**
-   ```json
-   {"file_id": 1, "operation": "dedup"}
-   ```
-
-2. **Unique Values (`unique`)**
-   ```json
-   {"file_id": 1, "operation": "unique", "column": "email"}
-   ```
-
-3. **Filter Data (`filter`)**
-   ```json
-   {
-     "file_id": 1, 
-     "operation": "filter",
-     "filters": [
-       {"column": "age", "operator": ">", "value": 25},
-       {"column": "status", "operator": "==", "value": "active"}
-     ]
-   }
-   ```
-
 ## 📊 Monitoring & Debugging
 
 ### View Service Logs
@@ -305,15 +251,6 @@ make build && make up
 2. Rebuild container: `make build`
 3. Restart services: `make restart`
 
-### Running Tests
-```bash
-# Run Django tests
-make test
-
-# Run specific test
-docker-compose exec web python manage.py test csv_app.tests.TestUploadAPI
-```
-
 ### Database Migrations
 ```bash
 # Create migrations
@@ -346,36 +283,4 @@ ravid/
 └── README.md                # This file
 ```
 
-## 🎯 Features Implemented
-
-### ✅ Authentication
-- [x] JWT-based authentication
-- [x] User registration with email validation
-- [x] User login with token generation
-- [x] Protected API endpoints
-
-### ✅ CSV Upload
-- [x] File upload with validation
-- [x] CSV format verification
-- [x] User-specific file management
-
-### ✅ CSV Processing (Celery Tasks)
-- [x] Deduplication
-- [x] Unique value extraction
-- [x] Data filtering with multiple operators
-- [x] Background task processing
-- [x] Task status tracking
-
-### ✅ API Documentation
-- [x] Swagger UI integration
-- [x] Interactive API testing
-- [x] Complete endpoint documentation
-
-### ✅ Dockerization
-- [x] Multi-container architecture
-- [x] Service health checks
-- [x] Automatic migrations
-- [x] Volume persistence
-- [x] Easy deployment commands
-
-**🎉 Thank you for reviewing the RAVID CSV Processing API!**
+**🎉 Thank you for reviewing the CSV Processing API!**
