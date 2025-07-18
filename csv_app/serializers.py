@@ -12,21 +12,32 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         min_length=8,
         style={'input_type': 'password'}
     )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        style={'input_type': 'password'}
+    )
 
     class Meta:
         model = User
-        fields = ('email', 'password')
+        fields = ('email', 'password', 'confirm_password')
 
     def validate_email(self, value):
         email_regex = r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$'
         if not re.match(email_regex, value):
             raise serializers.ValidationError("Invalid email format")
-
-        # Check if email already exists
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email already exists")
-
         return value.lower()
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+        confirm_password = attrs.get('confirm_password')
+        if password != confirm_password:
+            raise serializers.ValidationError({
+                'confirm_password': "Password and confirm password do not match"
+            })
+        return attrs
 
     def validate_password(self, value):
         try:

@@ -27,7 +27,7 @@ class RegisterView(APIView):
         operation_description="Register a new user",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
-            required=['email', 'password'],
+            required=['email', 'password', 'confirm_password'],
             properties={
                 'email': openapi.Schema(
                     type=openapi.TYPE_STRING,
@@ -38,6 +38,11 @@ class RegisterView(APIView):
                     type=openapi.TYPE_STRING,
                     format=openapi.FORMAT_PASSWORD,
                     description='User password (min 8 characters)'
+                ),
+                'confirm_password': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    format=openapi.FORMAT_PASSWORD,
+                    description='Confirm password (must match password)'
                 ),
             }
         ),
@@ -66,6 +71,10 @@ class RegisterView(APIView):
                         'error': openapi.Schema(
                             type=openapi.TYPE_STRING,
                             example='Email already exists'
+                        ),
+                        'confirm_password': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example='Password and confirm password do not match'
                         )
                     }
                 )
@@ -90,6 +99,8 @@ class RegisterView(APIView):
             error_msg = errors['email'][0]
         elif 'password' in errors:
             error_msg = errors['password'][0]
+        elif 'confirm_password' in errors:
+            error_msg = errors['confirm_password'][0]
         else:
             error_msg = 'Registration failed'
 
