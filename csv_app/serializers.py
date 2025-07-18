@@ -116,3 +116,89 @@ class CSVFileUploadSerializer(serializers.ModelSerializer):
         return csv_file
 
 
+class OperationRequestSerializer(serializers.Serializer):
+    OPERATION_CHOICES = [
+        ('dedup', 'Deduplication'),
+        ('unique', 'Unique Values'),
+        ('filter', 'Filter Data'),
+    ]
+
+    file_id = serializers.IntegerField()
+    operation = serializers.ChoiceField(choices=OPERATION_CHOICES)
+
+    # Optional parameters for different operations
+    column = serializers.CharField(required=False, allow_blank=True)
+    filters = serializers.JSONField(required=False, default=list)
+
+    def validate_file_id(self, value):
+        """Validate file exists and belongs to user"""
+        user = self.context['request'].user
+        try:
+            CSVFile.objects.get(id=value, user=user)
+        except CSVFile.DoesNotExist:
+            raise serializers.ValidationError(
+                "File not found or access denied"
+            )
+        return value
+
+    def validate(self, attrs):
+        """Validate operation-specific parameters"""
+        operation = attrs.get('operation')
+
+        if operation == 'unique':
+            if not attrs.get('column'):
+                raise serializers.ValidationError(
+                    "Column name is required for unique operation"
+                )
+
+        elif operation == 'filter':
+            filters = attrs.get('filters', [])
+            if not filters:
+                raise serializers.ValidationError(
+                    "Filter conditions are required for filter operation"
+                )
+
+            for filter_item in filters:
+                if not isinstance(filter_item, dict):
+                    raise serializers.ValidationError(
+                        "Each filter must be an object"
+                    )
+
+                required_fields = ['column', 'operator', 'value']
+                for field in required_fields:
+                    if field not in filter_item:
+                        raise serializers.ValidationError(
+                            f"Filter missing required field: {field}"
+                        )
+
+                # Validate operator
+                valid_operators = [
+                    '>', '>=', '<', '<=', '==', '!=', 'contains',
+                    'not_contains'
+                ]
+                if filter_item['operator'] not in valid_operators:
+                    raise serializers.ValidationError(
+                        f"Invalid operator: {filter_item['operator']}"
+                    )
+
+        return attrs
+
+
+class TaskStatusSerializer(serializers.ModelSerializer):
+    file_link = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TaskResult
+        fields = (
+            'task_id', 'status', 'operation', 'processed_rows', 
+            'original_rows', 'error_message', 'file_link',
+            'created_at', 'completed_at'
+        )
+
+    def get_file_link(self, obj):
+        """Generate download link for processed file"""
+        if obj.result_file_path and obj.status == 'SUCCESS':
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.result_file_path.url)
+        return None 
